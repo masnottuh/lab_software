@@ -6,28 +6,28 @@ import pandas as pd
 import os
 from datetime import datetime
 
-induc_task = nidaqmx.Task(new_task_name='induc_sensor')
-induc_task.ai_channels.add_ai_voltage_chan('Dev1/AI2', terminal_config = TerminalConfiguration(-1)) #initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
-lvit_task = nidaqmx.Task(new_task_name='lvit') #For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
-lvit_task.ai_channels.add_ai_voltage_chan('Dev1/AI7',terminal_config=TerminalConfiguration(-1)) # and https://www.ni.com/en-us/shop/data-acquisition/sensor-fundamentals/measuring-direct-current-dc-voltage.html
+task = nidaqmx.Task(new_task_name='task')
+task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1)) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
+task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1))#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
+# and https://www.ni.com/en-us/shop/data-acquisition/sensor-fundamentals/measuring-direct-current-dc-voltage.html
 
 numsampls = 5000 # number if sampls for it to collect
-rangsamples = [range(0,numsampls,1)] #list to accompany data in graphs
-
-
-lvit_data = lvit_task.read(number_of_samples_per_channel=numsampls)
-induc_data = induc_task.read(number_of_samples_per_channel=numsampls)
-lvit_task.close()
-induc_task.close()
+#rangsamples = [range(0,numsampls,1)] #list to accompany data in graphs
+ra = [1,2]
+sensor_data = task.read(number_of_samples_per_channel=numsampls)
+task.close()
 
 
 
 folder_path = "C:/Users/lapto/Desktop/Gavin/troubleshooting_data/"
 os.makedirs(folder_path, exist_ok=True)                         #only makes a new folder if there isnt one named 'folder_path'
 
-df = pd.DataFrame(induc_data,lvit_data)                             #csv for both sensors collected.
-csv_induc_id = datetime.now().strftime("%B%d Time %I-%M-%S")    #Create the file name. Spaces, word without quotes seem to work, ex: 'time'.
-file_name = f'Csv_{csv_induc_id}.csv' 
+df = pd.DataFrame(sensor_data)                             #csv for both sensors collected.
+print(df)
+
+
+csv_name = datetime.now().strftime("%B_%d_Time_%I-%M-%S")    #Create the file name. Spaces, word without quotes seem to work, ex: 'time'.
+file_name = f'Csv_{csv_name}.csv' 
 file_path = os.path.join(folder_path,file_name)
 df.to_csv(file_path)
 
@@ -35,13 +35,13 @@ df.to_csv(file_path)
 
 
 plt.figure(1) #both graphs are on one subplot
-plt.subplot(211), plt.xlabel('# of samples'), plt.ylabel('Induction sensor voltage') 
-plt.scatter(rangsamples, induc_data, s =5, c = 'b')  #This section creates the Png of the induction sensor graph. c is the color, s is the size of the points
-plt.subplot(212), plt.xlabel('# of samples'), plt.ylabel('LVIT voltage')  
-plt.scatter(rangsamples, lvit_data, s = 5, c ='r') #png of LVIT volts
-                      
-png_induc_id = datetime.now().strftime("%B%d Time %I-%M-%S")    #Create the file name. Spaces, word without quotes seem to work, see 'time'.
-file_name = f'plot_{png_induc_id}.png' 
+plt.xlabel('# of samples'), plt.ylabel('Induction sensor voltage') 
+plt.plot(sensor_data, c = 'b')  #This section creates the Png of the induction sensor graph. c is the color, s is the size of the points
+# plt.subplot(212), plt.xlabel('# of samples'), plt.ylabel('LVIT voltage')  
+# plt.scatter(rangsamples, lvit_data, s = 5, c ='r') #png of LVIT volts
+               
+png_name = datetime.now().strftime("%B_%d_Time_%I-%M-%S")    #Create the file name. Spaces, word without quotes seem to work, see 'time'.
+file_name = f'plot_{png_name}.png' 
 file_path = os.path.join(folder_path,file_name)
 plt.savefig(file_path, dpi=1000)
 plt.show() #this shows the plot you made prior to saving it.
@@ -49,7 +49,21 @@ plt.show() #this shows the plot you made prior to saving it.
 print('done')
 
 #to-do:
-# 1. figure out how sample rate is working, and make number of samples and timeout easy to use in general
-# 7. output both separate plots for LVIT and inductive sensor, and also a copy where we combine them on one plot
-# 8. gavin decide if subplots are reasonable/look good
-# 9. clean up / comment code
+# 1 check terminal configs https://nidaqmx-python.readthedocs.io/en/latest/constants.html#nidaqmx.constants.TerminalConfiguration (should you use three tasks with one channel each or one task with multiple channels)
+    # Read on their definitions, take samples and observations, and collect data into a one pager 
+# 2 look into timing here https://nidaqmx-python.readthedocs.io/en/latest/timing.html?highlight=sample%20rate#
+    #task. add_global_channels does weird shit but could add both lvit and induc to one .read
+    #nidaqmx.timing should return clock rate
+    #also see ai_conv_rate in docs
+# 3 implement basic thor movement
+    #   Use the example here https://github.com/Thorlabs/Motion_Control_Examples/blob/main/Python/Integrated%20Stages/LTS/lts_pythonnet.py
+    # To add the stage to the python program you’re building. You will need to instal pythonnet.
+    # change "polling rate" in example to 1 or 0.1 get quicker read outs?
+    # don't forget to add our serial number so it works
+    # device. Position to check (4)
+# 4 Return the devices current position
+    # Look into using device.Position to get current position and if that doesn’t work try something else lol
+    # found in kinesis short cut>thorlabs kinesis .net api html>integrated stepper motors>examples
+# Good reference on the serial comms and stage info https://www.thorlabs.com/Software/Motion%20Control/APT_Communications_Protocol.pdf
+#5 What is a thread in thor?
+#6 Fix df and graphs now that they are one ugly thing (7-24-2023)
