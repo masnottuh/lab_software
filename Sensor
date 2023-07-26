@@ -1,3 +1,13 @@
+"""
+PRIOR TO RUNNING
+activate gitbash terminal "Terminal>New Terminal> +'downarrow'>Git Bash
+type ". venv/Scripts/activate"
+should return "(venv)"
+now you are running file in virtual environment
+to run file, save the file and type "py -m Sensor.py"
+
+"""
+
 import nidaqmx
 from nidaqmx.constants import TerminalConfiguration
 import nidaqmx.system
