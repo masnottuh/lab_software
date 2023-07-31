@@ -6,6 +6,8 @@ should return "(venv)"
 now you are running file in virtual environment
 to run file, save the file and type "py -m Sensor.py"
 
+IF this message is displayed when gitbash starts "$ source c:/Users/lapto/Desktop/Gavin/Code/venv/Scripts/activate
+(venv)" , then you are in the virtual environment already.
 """
 
 import nidaqmx
@@ -32,9 +34,12 @@ task.close()
 folder_path = "C:/Users/lapto/Desktop/Gavin/troubleshooting_data/"
 os.makedirs(folder_path, exist_ok=True)                         #only makes a new folder if there isnt one named 'folder_path'
 
-df = pd.DataFrame(sensor_data)                             #csv for both sensors collected.
+df = pd.DataFrame(sensor_data)  
+df_sensor1 = df.iloc[0]
+df_sensor2 = df.iloc[1]                           #csv for both sensors collected.
 print(df)
-
+print(df_sensor1)
+print(df_sensor2)
 
 csv_name = datetime.now().strftime("%B_%d_Time_%I-%M-%S")    #Create the file name. Spaces, word without quotes seem to work, ex: 'time'.
 file_name = f'Csv_{csv_name}.csv' 
@@ -46,7 +51,8 @@ df.to_csv(file_path)
 
 plt.figure(1) #both graphs are on one subplot
 plt.xlabel('# of samples'), plt.ylabel('Induction sensor voltage') 
-plt.plot(sensor_data, c = 'b')  #This section creates the Png of the induction sensor graph. c is the color, s is the size of the points
+plt.plot(df_sensor1, c = 'b')  #This section creates the Png of the induction sensor graph. c is the color, s is the size of the points
+# plt.plot(df_sensor2, c = 'b')  #This section creates the Png of the induction sensor graph. c is the color, s is the size of the points
 # plt.subplot(212), plt.xlabel('# of samples'), plt.ylabel('LVIT voltage')  
 # plt.scatter(rangsamples, lvit_data, s = 5, c ='r') #png of LVIT volts
                
