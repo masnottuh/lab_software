@@ -5,4 +5,4 @@ Gavin F and Sam H are developing software for collecting sensor data and driving
 - thorlabs_apt
 - pandas
 - nidaqmx
-- 
+- DearpyGUI
