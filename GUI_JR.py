@@ -4,8 +4,10 @@ import dearpygui.dearpygui as dpg
 HOME_STAGE = 0
 
 #dpg.show_debug()
+# dpg.show_style_editor()
+
 dpg.create_context()
-dpg.show_style_editor()
+
 
 with dpg.theme() as item_theme1:
     with dpg.theme_component(dpg.mvAll):
