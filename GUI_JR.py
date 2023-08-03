@@ -1,9 +1,19 @@
 import dearpygui.dearpygui as dpg
+import thorlabs_apt as apt
+import ctypes 
+
+HWTYPE_LTS300 = 42 # LTS300/LTS150 Long Travel Integrated Driver/Stages
+
+#motor configs gives device info in tuples
+motor_configs = apt.list_available_devices()
+motor = apt.Motor(motor_configs[0][1]) #establishes communication with LTS motor, sets class at motor.
+MotorPos = motor.position
 
 
-HOME_STAGE = 0
 
-#dpg.show_debug()
+
+
+dpg.show_debug()
 # dpg.show_style_editor()
 
 dpg.create_context()
@@ -25,20 +35,11 @@ with dpg.theme() as item_theme_GREEN:
         dpg.add_theme_color(dpg.mvThemeCol_Button, (61, 143, 56), category=dpg.mvThemeCat_Core)
         dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
 
-def popup_funct_home(sender):#function to home stage, after homing HOME_STAGE remains =1 **bug?**
+def popup_funct_home(sender):#function to home stage
     dpg.configure_item("modal_id", show=False)
-    global HOME_STAGE
-    HOME_STAGE = 1
-
-def change_state(sender, app_data, user_data):
-    state = user_data
-    state = not state
-    print("button is ")
-    print(state)
-
-def print_value(sender, app_data):
-    print(sender)
-
+    motor.move_home() #HOMES MOTOR
+    dpg.set_value("location", 0 )
+   
 
 def run_function(sender):  #pulls input parameters and assigns them variables when run button is clicked
     Accel_Get = dpg.get_value(accel)
@@ -49,18 +50,27 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     print(f" Sample Rate is {SampleRate_Get}")
     Position_Get = dpg.get_value(position)
     print(f"Move to (absolute position) {Position_Get}")
+    motor.set_velocity_parameters(0,Accel_Get,Velo_Get)
+    motor.move_to(Position_Get)
+    dpg.set_value("location", Position_Get )
+
+   
+    
+
 
 with dpg.window(label="LST Settings", width=400, height=150, pos=(0,0)):
    
-    Home = dpg.add_button(label="HOME STAGE", callback=change_state)
+    Home = dpg.add_button(label="HOME STAGE")
     with dpg.popup(dpg.last_item(), mousebutton=dpg.mvMouseButton_Left, modal=True, tag="modal_id"):
         dpg.add_text("Do you want to home the stage? check if LVIT and stablizers are out of the way")
         YES_HOME = dpg.add_button(label="Yes, home the stage", callback=popup_funct_home)
         NO_HOME = dpg.add_button(label="Negative, do not home the stage", callback=lambda: dpg.configure_item("modal_id", show=False))
 
-    accel = dpg.add_input_float(label="acceleration", default_value =4, tag = "Accel")
-    velo = dpg.add_input_float(label="velocity", default_value =10, )
-    position = dpg.add_input_float(label="move to", default_value =10, )
+
+    accel = dpg.add_input_float(label="acceleration", default_value =1, tag = "Accel")
+    velo = dpg.add_input_float(label="velocity", default_value =5, )
+    position = dpg.add_input_float(label="move to (abs position)", default_value =150, )
+    Location = dpg.add_float_value(label = "current position mm", default_value = MotorPos, tag = "location" )
 
 with dpg.window(label="MYDAC", width=400, height=150, pos=(0,150)):
     samplerate = dpg.add_input_float(label="sample rate HZ", default_value =100, max_value=50, min_value=0)
@@ -81,4 +91,3 @@ dpg.show_viewport()
 dpg.start_dearpygui()
 dpg.destroy_context()
 
-print(HOME_STAGE)
