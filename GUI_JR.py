@@ -70,7 +70,7 @@ with dpg.window(label="LST Settings", width=400, height=150, pos=(0,0)):
     accel = dpg.add_input_float(label="acceleration", default_value =1, tag = "Accel")
     velo = dpg.add_input_float(label="velocity", default_value =5, )
     position = dpg.add_input_float(label="move to (abs position)", default_value =150, )
-    Location = dpg.add_float_value(label = "current position mm", default_value = MotorPos, tag = "location" )
+    Location = dpg.add_input_float(label = "current position mm", default_value = MotorPos, tag = "location" )
 
 with dpg.window(label="MYDAC", width=400, height=150, pos=(0,150)):
     samplerate = dpg.add_input_float(label="sample rate HZ", default_value =100, max_value=50, min_value=0)
