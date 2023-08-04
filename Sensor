@@ -23,12 +23,14 @@ task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfigu
 task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1))#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
 # and https://www.ni.com/en-us/shop/data-acquisition/sensor-fundamentals/measuring-direct-current-dc-voltage.html
 
-numsampls = 5000 # number if sampls for it to collect
+numsampls = 10 # number if sampls for it to collect
 #rangsamples = [range(0,numsampls,1)] #list to accompany data in graphs
 ra = [1,2]
 sensor_data = task.read(number_of_samples_per_channel=numsampls)
 task.close()
 
+print(ra)
+print(sensor_data)
 
 
 folder_path = "C:/Users/lapto/Desktop/Gavin/troubleshooting_data/"
