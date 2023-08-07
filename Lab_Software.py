@@ -37,7 +37,7 @@ MotorPos = motor.position
 
 
 
-dpg.show_debug()
+#dpg.show_debug()
 # dpg.show_style_editor()
 
 dpg.create_context()
@@ -104,8 +104,8 @@ def file_output(sensor_data):
     plt.savefig(file_path, dpi=1000)
 
 
-numsamples = 1000
-frequency = 200
+#numsamples = 1000
+#frequency = 200
 
 
 def popup_funct_home(sender):#function to home stage
@@ -121,15 +121,24 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     SampleRate_Get = dpg.get_value(samplerate)
     print(f" Sample Rate is {SampleRate_Get}")
     Position_Get = dpg.get_value(position)
+    frequency = dpg.get_value(samplerate)
     print(f"Move to (absolute position) {Position_Get}")
+
+
+    MotorPos = motor.position
+    dP = abs(MotorPos-Position_Get)
+    Taccel = Velo_Get/Accel_Get
+    dPaccel = (Velo_Get*Taccel)/2
+    dTvelo = abs(dP-dPaccel)/Velo_Get
+    dT = dTvelo + Taccel
+    numsamples = dT * frequency +2
+
     motor.set_velocity_parameters(0,Accel_Get,Velo_Get)
     motor.move_to(Position_Get)
     # data_collection((numsamples), (frequency))
     # print(data_collection((numsamples), (frequency)))
     sensor_data = data_collection((numsamples), (frequency))
     file_output(sensor_data)
-    
-
     dpg.set_value("location", Position_Get )
    # while motor.is_in_motion:
         #
