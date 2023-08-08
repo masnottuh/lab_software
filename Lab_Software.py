@@ -1,7 +1,19 @@
+#HOW TO RUN IN LAB
+#To run this program on the MSI Laptop in Dr. Hanna's lab:
+# 1. Open the Lab_Python.py file found in the folder Lab-Software(Program) inside of VSCode. 
+# 2. The program's code will open and so should a gitbash terminal, if a gitbash terminal does not open:
+#     Click Terminal>New Terminal and a Terminal will open.
+#     Then click the down arrow next to the + , and select "Git Bash".
+#     If you see a green "lapto@MSI" next to a purple "MINGW64" next to a yellow ~, then step 2 is done
+# 3. Type "cd Desktop/Lab_Software" to enter the correct folder.
+# 4. When ready to start the GUI, type py -m Lab_Software.py and enter, then wait.
+
 #------------------------------------------------
 #Python script to run lab instruments and form GUI
 #Version 1.0
-#for questions contact ____ at ____@____.com
+#for questions contact Gavin Fisher at GavinFisherProfessional@gmail.com
+#                  or  Josh Rudfelt at __________@____.com
+#                  or  Sam Hutton   at __________@____.com
 #------------------------------------------------
 
 #-------------------
@@ -12,6 +24,12 @@
 #-------------------
 
 #this file uses the thorlabs_apt library hosted at https://github.com/qpit/thorlabs_apt/blob/master/thorlabs_apt/core.py
+#               the nidaqmx library at https://github.com/ni/nidaqmx-python/tree/master
+#               and dearpygui at https://github.com/hoffstadt/DearPyGui
+#as well as pandas, matplotlib.pyplot, datetime, os, and cytypes.
+
+
+
 
 import dearpygui.dearpygui as dpg
 import thorlabs_apt as apt
@@ -62,8 +80,8 @@ with dpg.theme() as item_theme_GREEN:
 def data_collection(numsamples, frequency):
     
     with nidaqmx.Task(new_task_name='task') as task:
-        task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1)) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
-        task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1))#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
+        task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1), min_val=0,max_val=10) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
+        task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1), min_val=0,max_val=10)#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
         #      and https://www.ni.com/en-us/shop/data-acquisition/sensor-fundamentals/measuring-direct-current-dc-voltage.html
         # task.timing.samp_clk_max_rate(samplerate)
         task.timing.cfg_samp_clk_timing(frequency) #sets sample rate of code
@@ -71,7 +89,7 @@ def data_collection(numsamples, frequency):
         return task.read(number_of_samples_per_channel=numsamples)
 
 def file_output(sensor_data):
-    folder_path = "C:/Users/lapto/Desktop/Data_Output/"
+    folder_path = "C:/Users/lapto/Desktop/Lab_Software/Data_Output/"
     os.makedirs(folder_path, exist_ok=True)                         #only makes a new folder if there isnt one named 'folder_path'
 
     df = pd.DataFrame(sensor_data)  
@@ -86,7 +104,7 @@ def file_output(sensor_data):
     file_path = os.path.join(folder_path,file_name)
     df.to_csv(file_path)
 
-    plt.figure(1) #Plots and savesthe induc graph
+    plt.figure(1) #Plots and saves the induc graph
     plt.xlabel('# of samples'), plt.ylabel('Induction Sensor Voltage') 
     plt.plot(df_induc, c = 'b')  #This section creates the Png of the induction sensor graph. c is the color, s is the size of the points
     png_name = datetime.now().strftime("%B_%d_Time_%I-%M-%S")    #Create the file name. Spaces, word without quotes seem to work, see 'time'.
@@ -96,12 +114,14 @@ def file_output(sensor_data):
 
 
     plt.figure(2) #plots and saves LVIT graph
-    plt.xlabel('# of samples'), plt.ylabel('LVIT Volts')
+    plt.xlabel('# of samples'), plt.ylabel('LVIT Volts'), plt.ylim(0,11)
     plt.plot(df_LVIT, c = 'b')  #This section creates the Png of the induction sensor graph. c is the color, s is the size of the points
     png_name = datetime.now().strftime("%B_%d_Time_%I-%M-%S")    
     file_name = f'LVIT_{png_name}.png' 
     file_path = os.path.join(folder_path,file_name)
     plt.savefig(file_path, dpi=1000)
+
+    plt.close()
 
 
 #numsamples = 1000
@@ -131,18 +151,28 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     dPaccel = (Velo_Get*Taccel)/2
     dTvelo = abs(dP-dPaccel)/Velo_Get
     dT = dTvelo + Taccel
-    numsamples = dT * frequency +2
+    numsamples = int(dT * frequency +2)
+    print(dT)
 
+    
     motor.set_velocity_parameters(0,Accel_Get,Velo_Get)
+    print(f"motor is in motion val: {motor.is_in_motion}")
     motor.move_to(Position_Get)
+    pos = []
+    while motor.is_in_motion:
+        pos.append(motor.position)
+        #print(f"motor is in motion, val: {motor.is_in_motion}")
+        #print(f"current pos is: {motor.position}")
+    plt.plot(pos)
+    plt.savefig("test.png")
+    plt.close()
+    
     # data_collection((numsamples), (frequency))
     # print(data_collection((numsamples), (frequency)))
     sensor_data = data_collection((numsamples), (frequency))
     file_output(sensor_data)
     dpg.set_value("location", Position_Get )
-   # while motor.is_in_motion:
-        #
-        # print(motor.position)
+
 
 
 
