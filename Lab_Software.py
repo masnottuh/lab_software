@@ -132,7 +132,9 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     dTvelo = abs(dP-dPaccel)/Velo_Get
     dT = dTvelo + Taccel
     numsamples = dT * frequency +2
+    print(dT)
 
+    
     motor.set_velocity_parameters(0,Accel_Get,Velo_Get)
     motor.move_to(Position_Get)
     # data_collection((numsamples), (frequency))
