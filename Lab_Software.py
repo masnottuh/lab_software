@@ -56,7 +56,7 @@ nsamples = 200
 global data_y
 global data_x
 global data_z
-global liveplot
+# global liveplot
 liveplot = True
 # Can use collections if you only need the last 100 samples
 data_y = collections.deque([0.0],maxlen=nsamples)
@@ -68,10 +68,18 @@ data_z = collections.deque([0.0],maxlen=nsamples)
 
 #dpg.show_debug()
 # dpg.show_style_editor()
+global sample
+
+sample = 1
 
 dpg.create_context()
+
+
+
 def update_data():
-    sample = 1
+
+    global sample
+    global liveplot
     while liveplot:                   
         with nidaqmx.Task() as liveplot:
             liveplot.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
@@ -88,24 +96,40 @@ def update_data():
             data_x.append(sample)
             data_y.append(LVIT_Sensor_data[0])
             data_z.append(INDUCTOR_Sensor_data[0])
-                    
+            
             dpg.set_value('series_tag', [list(data_x), list(data_y)])          
             dpg.fit_axis_data('x_axis')
             dpg.set_axis_limits('y_axis', ymin=-1, ymax=10)
-                    # print(data_y)
+                  # print(data_y)
                     #print(data_z)
             dpg.set_value('series_tag2', [list(data_x), list(data_z)])          
             dpg.fit_axis_data('x_axis2')
-            dpg.fit_axis_data('z_axis')
-                    
+            dpg.fit_axis_data('z_axis')    
             sample=sample+1
                 
             
 
-#Initial GUI setup
-dpg.create_context() #needed to create the window
 
 #Initial GUI setup
+
+
+def button_callback(sender, app_data, user_data):
+      # Unpack the user_data that is currently associated with the button
+  global state    
+  state, enabled_theme, disabled_theme = user_data
+  # Flip the state
+  state = not state
+  # Apply the appropriate theme
+  dpg.bind_item_theme(sender, item_theme_GREEN if state is True else item_theme_RED)
+  # Update the user_data associated with the button
+  dpg.set_item_user_data(sender, (state, item_theme_GREEN, item_theme_RED,))
+#   return state
+
+
+with dpg.theme() as disabled_theme:
+    with dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 0, 0), category=dpg.mvThemeCat_Core)
+
 with dpg.theme() as item_theme1:
     with dpg.theme_component(dpg.mvAll):
         dpg.add_theme_color(dpg.mvThemeCol_Button, (235, 99, 144), category=dpg.mvThemeCat_Core)
@@ -130,19 +154,20 @@ def popup_funct_home(sender):#Function to home the stage.
 
 def data_collection(numsamples, frequency):
     
-    # with nidaqmx.Task(new_task_name='task') as task:
-    liveplot = False
-    task = nidaqmx.Task(new_task_name='task')
-    print(list(task.ai_channels))
-    task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1), min_val=0,max_val=10) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
-    task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1))#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
-    #      and https://www.ni.com/en-us/shop/data-acquisition/sensor-fundamentals/measuring-direct-current-dc-voltage.html
-    print(list(task.ai_channels))
-    task.timing.cfg_samp_clk_timing(frequency) #sets sample rate of code
-    sensor_data = task.read(number_of_samples_per_channel=numsamples)
-    task.close()
-    liveplot = True
-    return sensor_data
+    with nidaqmx.Task(new_task_name='task') as task:
+       
+        # print(liveplot)
+        # task = nidaqmx.Task(new_task_name='task')
+        # print(list(task.ai_channels))
+        task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1), min_val=0,max_val=10) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
+        task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1), min_val=-1,max_val=10)#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
+        #      and https://www.ni.com/en-us/shop/data-acquisition/sensor-fundamentals/measuring-direct-current-dc-voltage.html
+        # print(list(task.ai_channels))
+        task.timing.cfg_samp_clk_timing(frequency) #sets sample rate of code
+        sensor_data = task.read(number_of_samples_per_channel=numsamples)
+        task.close()
+        print(sensor_data)
+        return sensor_data
 
 def png_output(sensor_data,pos):
     folder_path = "C:/Users/lapto/Desktop/Lab_Software/Data_Output/"
@@ -194,12 +219,15 @@ def csv_output(sensor_data,pos):
     df2.to_csv(file_path)
 
 def run_function(sender):  #pulls input parameters and assigns them variables when run button is clicked
+    # state = button_callback()
+    print("state is")
+    print(state)
+    global liveplot
+    liveplot = False
     Accel_Get = dpg.get_value(accel)
     #print(f"Acceleration is {Accel_Get}")
     Velo_Get = dpg.get_value(velo)
     #print(f" Velocity is {Velo_Get}")
-    SampleRate_Get = dpg.get_value(samplerate)
-    #print(f" Sample Rate is {SampleRate_Get}")
     Position_Get = dpg.get_value(position)
     frequency = dpg.get_value(samplerate)
     #print(f"Move to (absolute position) {Position_Get}")
@@ -220,19 +248,23 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     print(f"motor is in motion val: {motor.is_in_motion}")
     motor.move_to(Position_Get)
     
-    pos = []
-    try:
-        while motor.is_in_motion:
-            cur_pos = motor.position
-            pos.append(cur_pos)
-            # time.sleep(1/frequency)
-    except: 
-        raise Exception("motor gave non-moving status after move command")
+    # pos = []
+    # try:
+    #     while motor.is_in_motion:
+    #         cur_pos = motor.position
+    #         pos.append(cur_pos)
+    #         # time.sleep(1/frequency)
+    # except: 
+    #     raise Exception("motor gave non-moving status after move command")
 
-    sensor_data = data_collection(numsamples, frequency)
-    png_output(sensor_data,pos)
-    csv_output(sensor_data,pos)
+    sensor_data2 = data_collection(numsamples, frequency)
+    print(sensor_data2)
+    # png_output(sensor_data,pos)
+    # csv_output(sensor_data,pos)
     dpg.set_value("location", Position_Get)
+    liveplot = True
+    update_data()
+
 
 #GUI That references functions
 with dpg.window(label="LST Settings", width=400, height=150, pos=(0,0)):
@@ -253,11 +285,12 @@ with dpg.window(label="MYDAC", width=400, height=150, pos=(0,150)):
     samplerate = dpg.add_input_float(label="sample rate HZ", default_value =100, max_value=50, min_value=0)
 
 
-with dpg.window(width=150, height=150,pos=(400,0)):
+with dpg.window(width=150, height=250,pos=(400,0)):
     RUN = dpg.add_button(label = "RUN", width=100, height=100, callback=run_function)
+    SAVE = dpg.add_button(label="SAVE", callback=button_callback, user_data=(True, item_theme_GREEN, item_theme_RED,), width= 100, height=100)
+    # print(liveplot)
 
-
-with dpg.window(label='LVIT', tag='win',width=800, height=600, pos=(00,200)):
+with dpg.window(label='LVIT', tag='win',width=800, height=600, pos=(00,250)):
 
     with dpg.plot(label='LVIT', height=-1, width=-1):
         # optionally create legend
@@ -273,7 +306,7 @@ with dpg.window(label='LVIT', tag='win',width=800, height=600, pos=(00,200)):
                             label='LVIT', parent='y_axis', 
                             tag='series_tag')
 
-with dpg.window(label='inductor', tag='win2',width=800, height=600, pos=(850,200)):
+with dpg.window(label='inductor', tag='win2',width=800, height=600, pos=(810,250)):
 
     with dpg.plot(label='INDUCTOR', height=-1, width=-1):
         # optionally create legend
@@ -296,7 +329,7 @@ dpg.bind_item_theme(Home, item_theme_RED)
 dpg.bind_item_theme(NO_HOME, item_theme_RED)
 dpg.bind_item_theme(YES_HOME, item_theme_GREEN)
 
-dpg.create_viewport(title='Cantilever Interface', width=800, height=600)
+dpg.create_viewport(title='Cantilever Interface', width=1500, height=2000)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 thread = threading.Thread(target=update_data)
