@@ -38,6 +38,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
+import collections
+import threading
 from datetime import datetime
 matplotlib.use('agg')
 
@@ -73,6 +75,7 @@ def update_data():
             task.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
             task.ai_channels.add_ai_voltage_chan("Dev1/ai7", min_val=-1, max_val=10)
             task.timing.cfg_samp_clk_timing(10000)  #frequncy of sample rate
+            sensor_data = task.read(number_of_samples_per_channel=1)
 
 
                     # Get new data sample. Note we need both x and y values
@@ -98,7 +101,6 @@ def update_data():
             
 
 #Initial GUI setup
-=======
 dpg.create_context() #needed to create the window
 
 #Initial GUI setup
