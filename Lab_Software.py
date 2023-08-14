@@ -56,6 +56,8 @@ nsamples = 200
 global data_y
 global data_x
 global data_z
+global liveplot
+liveplot = True
 # Can use collections if you only need the last 100 samples
 data_y = collections.deque([0.0],maxlen=nsamples)
 data_x = collections.deque([0.0],maxlen=nsamples)
@@ -70,7 +72,7 @@ data_z = collections.deque([0.0],maxlen=nsamples)
 dpg.create_context()
 def update_data():
     sample = 1
-    while True:                   
+    while liveplot:                   
         with nidaqmx.Task() as liveplot:
             liveplot.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
             liveplot.ai_channels.add_ai_voltage_chan("Dev1/ai7", min_val=-1, max_val=10)
@@ -129,7 +131,7 @@ def popup_funct_home(sender):#Function to home the stage.
 def data_collection(numsamples, frequency):
     
     # with nidaqmx.Task(new_task_name='task') as task:
-    
+    liveplot = False
     task = nidaqmx.Task(new_task_name='task')
     print(list(task.ai_channels))
     task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1), min_val=0,max_val=10) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
@@ -139,11 +141,12 @@ def data_collection(numsamples, frequency):
     task.timing.cfg_samp_clk_timing(frequency) #sets sample rate of code
     sensor_data = task.read(number_of_samples_per_channel=numsamples)
     task.close()
+    liveplot = True
     return sensor_data
 
 def png_output(sensor_data,pos):
     folder_path = "C:/Users/lapto/Desktop/Lab_Software/Data_Output/"
-    os.makedirs(folder_path, exist_ok=True)                         #only makes a new folder if there isnt one named 'folder_path'
+    os.makedirs(folder_path, exist_ok=True)  #only makes a new folder if there isnt one named 'folder_path'
     posdf = pd.DataFrame(pos)
     df = pd.DataFrame(sensor_data)  
     df_induc = df.iloc[0]
