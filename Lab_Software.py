@@ -71,17 +71,17 @@ dpg.create_context()
 def update_data():
     sample = 1
     while True:                   
-        with nidaqmx.Task() as task:
-            task.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
-            task.ai_channels.add_ai_voltage_chan("Dev1/ai7", min_val=-1, max_val=10)
-            task.timing.cfg_samp_clk_timing(10000)  #frequncy of sample rate
-            sensor_data = task.read(number_of_samples_per_channel=1)
+        with nidaqmx.Task() as liveplot:
+            liveplot.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
+            liveplot.ai_channels.add_ai_voltage_chan("Dev1/ai7", min_val=-1, max_val=10)
+            liveplot.timing.cfg_samp_clk_timing(10000)  #frequncy of sample rate
+            sensor_data_live = liveplot.read(number_of_samples_per_channel=1)
 
 
                     # Get new data sample. Note we need both x and y values
                     # if we want a meaningful axis unit
-            INDUCTOR_Sensor_data = sensor_data[0]
-            LVIT_Sensor_data = sensor_data[1]
+            INDUCTOR_Sensor_data = sensor_data_live[0]
+            LVIT_Sensor_data = sensor_data_live[1]
             
             data_x.append(sample)
             data_y.append(LVIT_Sensor_data[0])
