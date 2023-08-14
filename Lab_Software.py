@@ -24,6 +24,15 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from datetime import datetime
+<<<<<<< Updated upstream
+=======
+import math
+import time
+import collections
+import threading
+import pdb
+import numpy as np
+>>>>>>> Stashed changes
 matplotlib.use('agg')
 
 HWTYPE_LTS300 = 42 # LTS300/LTS150 Long Travel Integrated Driver/Stages
@@ -33,6 +42,18 @@ motor_configs = apt.list_available_devices()
 motor = apt.Motor(motor_configs[0][1]) #establishes communication with LTS motor, sets class at motor.
 MotorPos = motor.position
 
+<<<<<<< Updated upstream
+=======
+#code for realtime graphs
+nsamples = 200
+global data_y
+global data_x
+global data_z
+# Can use collections if you only need the last 100 samples
+data_y = collections.deque([0.0],maxlen=nsamples)
+data_x = collections.deque([0.0],maxlen=nsamples)
+data_z = collections.deque([0.0],maxlen=nsamples)
+>>>>>>> Stashed changes
 
 
 
@@ -40,9 +61,43 @@ MotorPos = motor.position
 #dpg.show_debug()
 # dpg.show_style_editor()
 
+<<<<<<< Updated upstream
 dpg.create_context()
+=======
+                    
+        with nidaqmx.Task() as task:
+            task.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
+            task.ai_channels.add_ai_voltage_chan("Dev1/ai7", min_val=-1, max_val=10)
+            task.timing.cfg_samp_clk_timing(10000)  #frequncy of sample rate
+>>>>>>> Stashed changes
 
 
+<<<<<<< Updated upstream
+=======
+            # Get new data sample. Note we need both x and y values
+            # if we want a meaningful axis unit
+            INDUCTOR_Sensor_data = sensor_data[0]
+            LVIT_Sensor_data = sensor_data[1]
+       
+            data_x.append(sample)
+            data_y.append(LVIT_Sensor_data[0])
+            data_z.append(INDUCTOR_Sensor_data[0])
+            
+            dpg.set_value('series_tag', [list(data_x), list(data_y)])          
+            dpg.fit_axis_data('x_axis')
+            dpg.set_axis_limits('y_axis', ymin=-1, ymax=10)
+            # print(data_y)
+            #print(data_z)
+            dpg.set_value('series_tag2', [list(data_x), list(data_z)])          
+            dpg.fit_axis_data('x_axis2')
+            dpg.fit_axis_data('z_axis')
+            
+            sample=sample+1
+           
+            
+
+#Initial GUI setup
+>>>>>>> Stashed changes
 with dpg.theme() as item_theme1:
     with dpg.theme_component(dpg.mvAll):
         dpg.add_theme_color(dpg.mvThemeCol_Button, (235, 99, 144), category=dpg.mvThemeCat_Core)
@@ -169,6 +224,41 @@ with dpg.window(label="MYDAC", width=400, height=150, pos=(0,150)):
 with dpg.window(width=150, height=150,pos=(400,0)):
     RUN = dpg.add_button(label = "RUN", width=100, height=100, callback=run_function)
 
+<<<<<<< Updated upstream
+=======
+with dpg.window(label='LVIT', tag='win',width=800, height=600, pos=(00,200)):
+
+    with dpg.plot(label='Line Series', height=-1, width=-1):
+        # optionally create legend
+        dpg.add_plot_legend()
+
+        # REQUIRED: create x and y axes, set to auto scale.
+        x_axis = dpg.add_plot_axis(dpg.mvXAxis, label='x', tag='x_axis')
+        y_axis = dpg.add_plot_axis(dpg.mvYAxis, label='y', tag='y_axis')
+
+        # series belong to a y axis. Note the tag name is used in the update
+        # function update_data
+        dpg.add_line_series(x=list(data_x),y=list(data_y), 
+                            label='LVIT', parent='y_axis', 
+                            tag='series_tag')
+
+with dpg.window(label='inductor', tag='win2',width=800, height=600, pos=(850,200)):
+
+    with dpg.plot(label='Line Series', height=-1, width=-1):
+        # optionally create legend
+        dpg.add_plot_legend()
+
+        # REQUIRED: create x and y axes, set to auto scale.
+        x_axis = dpg.add_plot_axis(dpg.mvXAxis, label='x', tag='x_axis2')
+        z_axis = dpg.add_plot_axis(dpg.mvYAxis, label='z', tag='z_axis')
+
+        # series belong to a y axis. Note the tag name is used in the update
+        # function update_data
+        dpg.add_line_series(x=list(data_x),y=list(data_z), 
+                            label='INDUCTOR', parent='z_axis', 
+                            tag='series_tag2')
+
+>>>>>>> Stashed changes
 
 dpg.bind_item_theme(RUN, item_theme1)
 dpg.bind_item_theme(Home, item_theme_RED)
