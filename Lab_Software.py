@@ -41,6 +41,7 @@ import os
 import collections
 import threading
 from datetime import datetime
+import time
 matplotlib.use('agg')
 
 HWTYPE_LTS300 = 42 # LTS300/LTS150 Long Travel Integrated Driver/Stages
@@ -52,16 +53,11 @@ MotorPos = motor.position
 
 
 #code for realtime graphs
-nsamples = 200
-global data_y
-global data_x
-global data_z
+
 # global liveplot
 liveplot = True
 # Can use collections if you only need the last 100 samples
-data_y = collections.deque([0.0],maxlen=nsamples)
-data_x = collections.deque([0.0],maxlen=nsamples)
-data_z = collections.deque([0.0],maxlen=nsamples)
+
 
 
 
@@ -69,17 +65,45 @@ data_z = collections.deque([0.0],maxlen=nsamples)
 #dpg.show_debug()
 # dpg.show_style_editor()
 global sample
+global data_z
+global data_y  
+global data_x  
+nsamples = 200
 
-sample = 1
+data_y = collections.deque([0.0],maxlen=nsamples)
+data_x = collections.deque([0.0],maxlen=nsamples)
+data_z = collections.deque([0.0],maxlen=nsamples)
+
 
 dpg.create_context()
 
 
 
-def update_data():
 
-    global sample
+
+
+
+# dpg.create_context()
+# dpg.set_value('series_tag', [list(data_x), list(data_y)])          
+# dpg.fit_axis_data('x_axis')
+# dpg.set_axis_limits('y_axis', ymin=-1, ymax=10
+#                                 )
+# dpg.set_value('series_tag2', [list(data_x), list(data_z)])          
+# dpg.fit_axis_data('x_axis2')
+# dpg.fit_axis_data('z_axis') 
+
+
+
+def update_data():
+   
+    sample = 1
+
+    data_y = collections.deque([0.0],maxlen=nsamples)
+    data_x = collections.deque([0.0],maxlen=nsamples)
+    data_z = collections.deque([0.0],maxlen=nsamples)
+    
     global liveplot
+    liveplot = True
     while liveplot:                   
         with nidaqmx.Task() as liveplot:
             liveplot.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
@@ -97,14 +121,16 @@ def update_data():
             data_y.append(LVIT_Sensor_data[0])
             data_z.append(INDUCTOR_Sensor_data[0])
             
+           
+                  # print(data_y)
+                    #print(data_z)
             dpg.set_value('series_tag', [list(data_x), list(data_y)])          
             dpg.fit_axis_data('x_axis')
             dpg.set_axis_limits('y_axis', ymin=-1, ymax=10)
-                  # print(data_y)
-                    #print(data_z)
+                                            
             dpg.set_value('series_tag2', [list(data_x), list(data_z)])          
             dpg.fit_axis_data('x_axis2')
-            dpg.fit_axis_data('z_axis')    
+            dpg.fit_axis_data('z_axis') 
             sample=sample+1
                 
             
@@ -114,7 +140,7 @@ def update_data():
 
 
 def button_callback(sender, app_data, user_data):
-      # Unpack the user_data that is currently associated with the button
+    # Unpack the user_data that is currently associated with the button
   global state    
   state, enabled_theme, disabled_theme = user_data
   # Flip the state
@@ -153,21 +179,26 @@ def popup_funct_home(sender):#Function to home the stage.
     dpg.set_value("location", 0 )
 
 def data_collection(numsamples, frequency):
-    
-    with nidaqmx.Task(new_task_name='task') as task:
-       
+    # while motor.is_in_motion:
+        global SAMPLING
+
+        print(SAMPLING)
+        with nidaqmx.Task(new_task_name='task') as task:
+            
         # print(liveplot)
         # task = nidaqmx.Task(new_task_name='task')
         # print(list(task.ai_channels))
-        task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1), min_val=0,max_val=10) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
-        task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1), min_val=-1,max_val=10)#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
+            task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1), min_val=0,max_val=10) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
+            task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1), min_val=-1,max_val=10)#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
         #      and https://www.ni.com/en-us/shop/data-acquisition/sensor-fundamentals/measuring-direct-current-dc-voltage.html
         # print(list(task.ai_channels))
-        task.timing.cfg_samp_clk_timing(frequency) #sets sample rate of code
-        sensor_data = task.read(number_of_samples_per_channel=numsamples)
-        task.close()
-        print(sensor_data)
-        return sensor_data
+            task.timing.cfg_samp_clk_timing(frequency) #sets sample rate of code
+            sensor_data2 = task.read(number_of_samples_per_channel=numsamples)
+            task.close()
+            print(sensor_data2)
+            SAMPLING = False
+            print(SAMPLING)
+            return sensor_data2
 
 def png_output(sensor_data,pos):
     folder_path = "C:/Users/lapto/Desktop/Lab_Software/Data_Output/"
@@ -222,8 +253,7 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     # state = button_callback()
     print("state is")
     print(state)
-    global liveplot
-    liveplot = False
+    
     Accel_Get = dpg.get_value(accel)
     #print(f"Acceleration is {Accel_Get}")
     Velo_Get = dpg.get_value(velo)
@@ -232,8 +262,9 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     frequency = dpg.get_value(samplerate)
     #print(f"Move to (absolute position) {Position_Get}")
 
-
     MotorPos = motor.position
+    print(MotorPos)
+    print('posget', Position_Get)
     dP = abs(MotorPos-Position_Get)
     Taccel = Velo_Get/Accel_Get
     dPaccel = (Velo_Get*Taccel)/2
@@ -242,28 +273,65 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     numsamples = int(dT * frequency +2)
     print(f"Time to run in Sec: {dT}")
     print(f"Number of samples: {numsamples}")
+    numsamples = 500
+    print(Position_Get)
+    print(Accel_Get)
+    print(Velo_Get)
 
-    
     motor.set_velocity_parameters(0,Accel_Get,Velo_Get)
     print(f"motor is in motion val: {motor.is_in_motion}")
     motor.move_to(Position_Get)
-    
-    # pos = []
+    print(Position_Get)
+
+    if state == True:
+    #    dpg.delete_item("series_tag")
+    #    dpg.delete_item("series_tag2")
+       global SAMPLING
+       SAMPLING = True
+       global liveplot
+       liveplot = False
+       time.sleep(.25)
+       sensor_data2 = data_collection(numsamples, frequency)
+       print(sensor_data2)
+       pos = []
     # try:
-    #     while motor.is_in_motion:
-    #         cur_pos = motor.position
-    #         pos.append(cur_pos)
-    #         # time.sleep(1/frequency)
+       while motor.is_in_motion:
+            cur_pos = motor.position
+            pos.append(cur_pos)
+        
+       png_output(sensor_data2,pos)
+       csv_output(sensor_data2,pos)
+       LIVELOOP = True
+
+       while LIVELOOP:
+            
+            time.sleep(.5)
+            print("LIVELOOP RUNNING?")
+            print(LIVELOOP)
+            if SAMPLING == False:
+                update_data()
+                LIVELOOP = False
+                break
+            break
+
+       print(LIVELOOP)
+
+
+    #    while sampling == False
+    #     update dataaa
+    #     break
+       
+           
+
+    
+            # time.sleep(1/frequency)
     # except: 
     #     raise Exception("motor gave non-moving status after move command")
+    # numsamples=1000
 
-    sensor_data2 = data_collection(numsamples, frequency)
-    print(sensor_data2)
-    # png_output(sensor_data,pos)
-    # csv_output(sensor_data,pos)
+
     dpg.set_value("location", Position_Get)
-    liveplot = True
-    update_data()
+    # liveplot = True
 
 
 #GUI That references functions
@@ -278,11 +346,11 @@ with dpg.window(label="LST Settings", width=400, height=150, pos=(0,0)):
 
     accel = dpg.add_input_float(label="acceleration", default_value =1, tag = "Accel")
     velo = dpg.add_input_float(label="velocity", default_value =5, )
-    position = dpg.add_input_float(label="move to (abs position)", default_value =15, )
+    position = dpg.add_input_float(label="move to (abs position)", default_value =50, )
     Location = dpg.add_input_float(label = "current position mm", default_value = MotorPos, tag = "location" )
 
 with dpg.window(label="MYDAC", width=400, height=150, pos=(0,150)):
-    samplerate = dpg.add_input_float(label="sample rate HZ", default_value =100, max_value=50, min_value=0)
+    samplerate = dpg.add_input_float(label="sample rate HZ", default_value =100, min_value=0)
 
 
 with dpg.window(width=150, height=250,pos=(400,0)):
@@ -290,23 +358,24 @@ with dpg.window(width=150, height=250,pos=(400,0)):
     SAVE = dpg.add_button(label="SAVE", callback=button_callback, user_data=(True, item_theme_GREEN, item_theme_RED,), width= 100, height=100)
     # print(liveplot)
 
-with dpg.window(label='LVIT', tag='win',width=800, height=600, pos=(00,250)):
+with dpg.window(label='LVIT', tag='lvit',width=800, height=600, pos=(00,250)):
 
-    with dpg.plot(label='LVIT', height=-1, width=-1):
+    with dpg.plot(label='LVIT', height=-1, width=-1, tag="LVIT PLOT"):
         # optionally create legend
         dpg.add_plot_legend()
-
+        
         # REQUIRED: create x and y axes, set to auto scale.
         x_axis = dpg.add_plot_axis(dpg.mvXAxis, label='x', tag='x_axis')
         y_axis = dpg.add_plot_axis(dpg.mvYAxis, label='y', tag='y_axis')
 
         # series belong to a y axis. Note the tag name is used in the update
         # function update_data
+        
         dpg.add_line_series(x=list(data_x),y=list(data_y), 
                             label='LVIT', parent='y_axis', 
                             tag='series_tag')
 
-with dpg.window(label='inductor', tag='win2',width=800, height=600, pos=(810,250)):
+with dpg.window(label='inductor', tag='induc',width=800, height=600, pos=(810,250)):
 
     with dpg.plot(label='INDUCTOR', height=-1, width=-1):
         # optionally create legend
@@ -329,7 +398,7 @@ dpg.bind_item_theme(Home, item_theme_RED)
 dpg.bind_item_theme(NO_HOME, item_theme_RED)
 dpg.bind_item_theme(YES_HOME, item_theme_GREEN)
 
-dpg.create_viewport(title='Cantilever Interface', width=1500, height=2000)
+dpg.create_viewport(title='Cantilever Interface', width=1800, height=1200)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 thread = threading.Thread(target=update_data)
