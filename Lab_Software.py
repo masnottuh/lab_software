@@ -270,10 +270,8 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
         time.sleep(.25)
         sensor_data2 = data_collection(numsamples, frequency) # function that samples Inductor and LVIT 
 
-        #GAVIN PLEASE FIX MINOR BUGS IN PNG AND CSV FUNCTION
-
-        # png_output(sensor_data2,pos)
-        # csv_output(sensor_data2,pos)
+        png_output(sensor_data2,pos)
+        csv_output(sensor_data2,pos)
 
         print(sensor_data2)
         pos = []
