@@ -28,9 +28,11 @@
 #               and dearpygui at https://github.com/hoffstadt/DearPyGui
 #as well as pandas, matplotlib.pyplot, datetime, os, and cytypes.
 
-import dearpygui.dearpygui as dpg
+import faulthandler
+faulthandler.enable()
+
 import thorlabs_apt as apt
-import ctypes 
+import dearpygui.dearpygui as dpg
 import nidaqmx
 from nidaqmx.constants import TerminalConfiguration
 import nidaqmx.system
@@ -55,15 +57,21 @@ MotorPos = motor.position
 #code for realtime graphs
 
 # global liveplot
-liveplot = True
+# liveplot = True
 # Can use collections if you only need the last 100 samples
 
+class Object(object):
+    pass
+
+program_parameters = Object()
+program_parameters.save = False
+program_parameters.liveplot = True
+program_parameters.is_sampling = False
+program_parameters.move_forward = False
+program_parameters.move_backward = False
 
 
 
-
-#dpg.show_debug()
-# dpg.show_style_editor()
 global sample
 global data_z
 global data_y  
@@ -82,15 +90,14 @@ dpg.create_context()
 
 
 
-
-# dpg.create_context()
-# dpg.set_value('series_tag', [list(data_x), list(data_y)])          
-# dpg.fit_axis_data('x_axis')
-# dpg.set_axis_limits('y_axis', ymin=-1, ymax=10
-#                                 )
-# dpg.set_value('series_tag2', [list(data_x), list(data_z)])          
-# dpg.fit_axis_data('x_axis2')
-# dpg.fit_axis_data('z_axis') 
+# # dpg.create_context()
+# # dpg.set_value('series_tag', [list(data_x), list(data_y)])          
+# # dpg.fit_axis_data('x_axis')
+# # dpg.set_axis_limits('y_axis', ymin=-1, ymax=10
+# #                                 )
+# # dpg.set_value('series_tag2', [list(data_x), list(data_z)])          
+# # dpg.fit_axis_data('x_axis2')
+# # dpg.fit_axis_data('z_axis') 
 
 
 
@@ -101,76 +108,53 @@ def update_data():
     data_y = collections.deque([0.0],maxlen=nsamples)
     data_x = collections.deque([0.0],maxlen=nsamples)
     data_z = collections.deque([0.0],maxlen=nsamples)
-    
-    global liveplot
-    liveplot = True
-    while liveplot:                   
-        with nidaqmx.Task() as liveplot:
-            liveplot.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
-            liveplot.ai_channels.add_ai_voltage_chan("Dev1/ai7", min_val=-1, max_val=10)
-            liveplot.timing.cfg_samp_clk_timing(10000)  #frequncy of sample rate
-            sensor_data_live = liveplot.read(number_of_samples_per_channel=1)
+
+    while program_parameters.liveplot:                   
+        with nidaqmx.Task() as liveplot_channel:
+            liveplot_channel.ai_channels.add_ai_voltage_chan("Dev1/ai2", min_val=0, max_val=10)
+            liveplot_channel.ai_channels.add_ai_voltage_chan("Dev1/ai7", min_val=-1, max_val=10)
+            liveplot_channel.timing.cfg_samp_clk_timing(10000)  #frequncy of sample rate
+            sensor_data_live = liveplot_channel.read(number_of_samples_per_channel=1)
 
 
                     # Get new data sample. Note we need both x and y values
                     # if we want a meaningful axis unit
             INDUCTOR_Sensor_data = sensor_data_live[0]
             LVIT_Sensor_data = sensor_data_live[1]
-            
+            # dum_sample = list(range(1,sample))
             data_x.append(sample)
             data_y.append(LVIT_Sensor_data[0])
             data_z.append(INDUCTOR_Sensor_data[0])
             
            
-                  # print(data_y)
-                    #print(data_z)
+          
             dpg.set_value('series_tag', [list(data_x), list(data_y)])          
             dpg.fit_axis_data('x_axis')
             dpg.set_axis_limits('y_axis', ymin=-1, ymax=10)
-                                            
+            # print('after')
+                                       
             dpg.set_value('series_tag2', [list(data_x), list(data_z)])          
             dpg.fit_axis_data('x_axis2')
-            dpg.fit_axis_data('z_axis') 
+            dpg.fit_axis_data('z_axis')
             sample=sample+1
                 
             
 
-
-#Initial GUI setup
-
-
 def button_callback(sender, app_data, user_data):
     # Unpack the user_data that is currently associated with the button
-  global state    
-  state, enabled_theme, disabled_theme = user_data
+    #   global state    
+    #   state, enabled_theme, disabled_theme = user_data
   # Flip the state
-  state = not state
+  program_parameters.save = not program_parameters.save
+    #       state = not state
   # Apply the appropriate theme
-  dpg.bind_item_theme(sender, item_theme_GREEN if state is True else item_theme_RED)
+  dpg.bind_item_theme(sender, item_theme_GREEN if program_parameters.save is True else item_theme_RED)
   # Update the user_data associated with the button
-  dpg.set_item_user_data(sender, (state, item_theme_GREEN, item_theme_RED,))
+  dpg.set_item_user_data(sender, (program_parameters.save, item_theme_GREEN, item_theme_RED,))
 #   return state
 
 
-with dpg.theme() as disabled_theme:
-    with dpg.theme_component(dpg.mvAll):
-        dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 0, 0), category=dpg.mvThemeCat_Core)
 
-with dpg.theme() as item_theme1:
-    with dpg.theme_component(dpg.mvAll):
-        dpg.add_theme_color(dpg.mvThemeCol_Button, (235, 99, 144), category=dpg.mvThemeCat_Core)
-        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
-
-with dpg.theme() as item_theme_RED:
-    with dpg.theme_component(dpg.mvAll):
-        dpg.add_theme_color(dpg.mvThemeCol_Button, (226, 61, 0), category=dpg.mvThemeCat_Core)
-        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
-        #dpg.add_theme_style(dpg.mvThemeCol_Text, (0, 0, 0), category=dpg.mvThemeCat_Core)
-
-with dpg.theme() as item_theme_GREEN:
-    with dpg.theme_component(dpg.mvAll):
-        dpg.add_theme_color(dpg.mvThemeCol_Button, (61, 143, 56), category=dpg.mvThemeCat_Core)
-        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
 
 #FUNCTIONS
 def popup_funct_home(sender):#Function to home the stage.
@@ -180,9 +164,9 @@ def popup_funct_home(sender):#Function to home the stage.
 
 def data_collection(numsamples, frequency):
     # while motor.is_in_motion:
-        global SAMPLING
+        # global SAMPLING
 
-        print(SAMPLING)
+        # print(SAMPLING)
         with nidaqmx.Task(new_task_name='task') as task:
             
         # print(liveplot)
@@ -196,8 +180,8 @@ def data_collection(numsamples, frequency):
             sensor_data2 = task.read(number_of_samples_per_channel=numsamples)
             task.close()
             print(sensor_data2)
-            SAMPLING = False
-            print(SAMPLING)
+            program_parameters.is_sampling = False
+            # print(SAMPLING)
             return sensor_data2
 
 def png_output(sensor_data,pos):
@@ -250,19 +234,14 @@ def csv_output(sensor_data,pos):
     df2.to_csv(file_path)
 
 def run_function(sender):  #pulls input parameters and assigns them variables when run button is clicked
-    # state = button_callback()
-    print("state is")
-    print(state)
     
-    Accel_Get = dpg.get_value(accel)
-    #print(f"Acceleration is {Accel_Get}")
+    
+    Accel_Get = dpg.get_value(accel)  #These 4 lines fetch the  our inputs from the GUI and assign them to varibles
     Velo_Get = dpg.get_value(velo)
-    #print(f" Velocity is {Velo_Get}")
     Position_Get = dpg.get_value(position)
-    frequency = dpg.get_value(samplerate)
-    #print(f"Move to (absolute position) {Position_Get}")
+    frequency = dpg.get_value(samplerate)  
 
-    MotorPos = motor.position
+    MotorPos = motor.position    #These 10 lines calculate run time and total number of samples with mydac
     print(MotorPos)
     print('posget', Position_Get)
     dP = abs(MotorPos-Position_Get)
@@ -273,70 +252,111 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     numsamples = int(dT * frequency +2)
     print(f"Time to run in Sec: {dT}")
     print(f"Number of samples: {numsamples}")
-    numsamples = 500
+
+    # numsamples = 500
     print(Position_Get)
     print(Accel_Get)
     print(Velo_Get)
 
-    motor.set_velocity_parameters(0,Accel_Get,Velo_Get)
-    print(f"motor is in motion val: {motor.is_in_motion}")
-    motor.move_to(Position_Get)
+    motor.set_velocity_parameters(0,Accel_Get,Velo_Get)  #inputs min velocity (0), acceleration and max velocity
+    motor.move_to(Position_Get)  #command that gets sent to LTS, initaites movement
     print(Position_Get)
+    dpg.set_value("location", Position_Get)
 
-    if state == True:
-    #    dpg.delete_item("series_tag")
-    #    dpg.delete_item("series_tag2")
-       global SAMPLING
-       SAMPLING = True
-       global liveplot
-       liveplot = False
-       time.sleep(.25)
-       sensor_data2 = data_collection(numsamples, frequency)
-       print(sensor_data2)
-       pos = []
-    # try:
-       while motor.is_in_motion:
+    if program_parameters.save == True:  #from save toggle button on GUI, if True code pauses live sampling and calls the function data collection to sample 
+
+        program_parameters.is_sampling = True
+        program_parameters.liveplot = False
+        time.sleep(.25)
+        sensor_data2 = data_collection(numsamples, frequency) # function that samples Inductor and LVIT 
+
+        #GAVIN PLEASE FIX MINOR BUGS IN PNG AND CSV FUNCTION
+
+        # png_output(sensor_data2,pos)
+        # csv_output(sensor_data2,pos)
+
+        print(sensor_data2)
+        pos = []
+
+        while motor.is_in_motion:
             cur_pos = motor.position
             pos.append(cur_pos)
-        
-       png_output(sensor_data2,pos)
-       csv_output(sensor_data2,pos)
-       LIVELOOP = True
-
-       while LIVELOOP:
-            
-            time.sleep(.5)
-            print("LIVELOOP RUNNING?")
-            print(LIVELOOP)
-            if SAMPLING == False:
-                update_data()
-                LIVELOOP = False
-                break
-            break
-
-       print(LIVELOOP)
-
-
-    #    while sampling == False
-    #     update dataaa
-    #     break
-       
-           
-
     
-            # time.sleep(1/frequency)
-    # except: 
-    #     raise Exception("motor gave non-moving status after move command")
-    # numsamples=1000
+        time.sleep(3.0)
+
+        program_parameters.liveplot = True #restarts while loop allowing live plots to function
+        thread = threading.Thread(target=update_data) #restarts thread application for live plots
+        thread.start()
+        return 0
+
+def move_forward():
+
+    if program_parameters.move_forward==True:
+        Accel_Get = dpg.get_value(accel)  #These 4 lines fetch the  our inputs from the GUI and assign them to varibles
+        Velo_Get = dpg.get_value(velo)
+        motor.set_velocity_parameters(0,Accel_Get,Velo_Get)
+        motor.move_velocity(1)
+    else:
+        motor.stop_profiled()
+
+def move_forward_button_state(sender):
+    # print(program_parameters.move_forward)
+    # print(program_parameters.move_forward)
+    program_parameters.move_forward = not program_parameters.move_forward
+    dpg.bind_item_theme(sender, item_theme_GREEN if program_parameters.move_forward is True else item_theme_RED)
+    move_forward()
+
+def move_backward():
+
+    if program_parameters.move_backward==True:
+        Accel_Get = dpg.get_value(accel)  #These 4 lines fetch the  our inputs from the GUI and assign them to varibles
+        Velo_Get = dpg.get_value(velo)
+        motor.set_velocity_parameters(0,Accel_Get,Velo_Get)
+        motor.move_velocity(2)
+    else:
+        motor.stop_profiled()
+
+def move_backward_button_state(sender):
+    # print(program_parameters.move_forward)
+    # print(program_parameters.move_forward)
+    program_parameters.move_backward = not program_parameters.move_backward
+    dpg.bind_item_theme(sender, item_theme_GREEN if program_parameters.move_backward is True else item_theme_RED)
+    move_backward()
+    
+ 
 
 
-    dpg.set_value("location", Position_Get)
-    # liveplot = True
+
+
+
+        
 
 
 #GUI That references functions
-with dpg.window(label="LST Settings", width=400, height=150, pos=(0,0)):
-   
+# with dpg.item_handler_registry(tag="move_forward_true") as handler:
+#     dpg.add_item_active_handler(callback=move_forward)
+
+# dpg.bind_item_handler_registry("move_forward", "move_forward_true")
+
+with dpg.theme() as item_theme_PINK: #creates item theme that colors buttons pink
+    with dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_color(dpg.mvThemeCol_Button, (235, 99, 144), category=dpg.mvThemeCat_Core)
+        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
+
+with dpg.theme() as item_theme_RED: #creates item them that is red
+    with dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_color(dpg.mvThemeCol_Button, (226, 61, 0), category=dpg.mvThemeCat_Core)
+        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
+        #dpg.add_theme_style(dpg.mvThemeCol_Text, (0, 0, 0), category=dpg.mvThemeCat_Core)
+
+with dpg.theme() as item_theme_GREEN:
+    with dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_color(dpg.mvThemeCol_Button, (61, 143, 56), category=dpg.mvThemeCat_Core)
+        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 0, category=dpg.mvThemeCat_Core)
+
+with dpg.window(label="LST Settings", width=400, height=250, pos=(151,0)): #GUI with inputs for LTS
+    Move_forward = dpg.add_button(label="move forward", tag="move_forward", callback=move_forward_button_state)
+    Move_Backward = dpg.add_button(label="move backwards",tag="move_backward",callback=move_backward_button_state)
     Home = dpg.add_button(label="HOME STAGE")
     with dpg.popup(dpg.last_item(), mousebutton=dpg.mvMouseButton_Left, modal=True, tag="modal_id"):
         dpg.add_text("Do you want to home the stage? check if LVIT and stablizers are out of the way")
@@ -349,11 +369,11 @@ with dpg.window(label="LST Settings", width=400, height=150, pos=(0,0)):
     position = dpg.add_input_float(label="move to (abs position)", default_value =50, )
     Location = dpg.add_input_float(label = "current position mm", default_value = MotorPos, tag = "location" )
 
-with dpg.window(label="MYDAC", width=400, height=150, pos=(0,150)):
+with dpg.window(label="MYDAC", width=400, height=250, pos=(551,0)):
     samplerate = dpg.add_input_float(label="sample rate HZ", default_value =100, min_value=0)
 
 
-with dpg.window(width=150, height=250,pos=(400,0)):
+with dpg.window(width=150, height=250,pos=(1,0)):
     RUN = dpg.add_button(label = "RUN", width=100, height=100, callback=run_function)
     SAVE = dpg.add_button(label="SAVE", callback=button_callback, user_data=(True, item_theme_GREEN, item_theme_RED,), width= 100, height=100)
     # print(liveplot)
@@ -393,16 +413,23 @@ with dpg.window(label='inductor', tag='induc',width=800, height=600, pos=(810,25
 
 
 
-dpg.bind_item_theme(RUN, item_theme1)
+dpg.bind_item_theme(RUN, item_theme_PINK)
 dpg.bind_item_theme(Home, item_theme_RED)
 dpg.bind_item_theme(NO_HOME, item_theme_RED)
 dpg.bind_item_theme(YES_HOME, item_theme_GREEN)
+
 
 dpg.create_viewport(title='Cantilever Interface', width=1800, height=1200)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 thread = threading.Thread(target=update_data)
 thread.start()
+
 dpg.start_dearpygui()
+
+
 dpg.destroy_context()
+
+
+apt.our_cleanup()
 
