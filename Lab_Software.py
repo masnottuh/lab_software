@@ -185,7 +185,7 @@ def data_collection(numsamples, frequency):
             return sensor_data2
 
 def png_output(sensor_data,pos):
-    folder_path = "C:/Users/lapto/Desktop/Lab_Software/Data_Output/"
+    folder_path = "C:/Users/lapto/Desktop/lab_program/data_output/"
     os.makedirs(folder_path, exist_ok=True)  #only makes a new folder if there isnt one named 'folder_path'
     posdf = pd.DataFrame(pos)
     df = pd.DataFrame(sensor_data)  
@@ -227,7 +227,7 @@ def csv_output(sensor_data,pos):
     names = ["Induction","LVIT","Position"]
     df2.columns = names
     
-    folder_path = "C:/Users/lapto/Desktop/Lab_Software/Data_Output/"
+    folder_path = "C:/Users/lapto/Desktop/lab_program/data_output/"
     csv_name = datetime.now().strftime("%B_%d_Time_%I-%M-%S")    #Create the file name. Spaces, word without quotes seem to work, ex: 'time'.
     file_name = f'Csv_{csv_name}.csv' 
     file_path = os.path.join(folder_path,file_name)
