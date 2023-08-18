@@ -1,0 +1,5 @@
+thorlabs_apt
+dearpygui
+nidaqmx
+matplotlib
+pandas
