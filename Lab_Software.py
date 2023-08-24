@@ -28,13 +28,15 @@
 #               and dearpygui at https://github.com/hoffstadt/DearPyGui
 #as well as pandas, matplotlib.pyplot, datetime, os, and cytypes.
 
-import faulthandler
-faulthandler.enable()
+# import faulthandler
+# faulthandler.enable()
 
 import thorlabs_apt as apt
 import dearpygui.dearpygui as dpg
 import nidaqmx
 from nidaqmx.constants import TerminalConfiguration
+from nidaqmx.constants import (AcquisitionType)
+
 import nidaqmx.system
 import matplotlib
 import matplotlib.pyplot as plt
@@ -69,8 +71,7 @@ program_parameters.liveplot = True
 program_parameters.is_sampling = False
 program_parameters.move_forward = False
 program_parameters.move_backward = False
-
-
+program_parameters.position_get = []
 
 global sample
 global data_z
@@ -84,12 +85,6 @@ data_z = collections.deque([0.0],maxlen=nsamples)
 
 
 dpg.create_context()
-
-
-
-
-
-
 # # dpg.create_context()
 # # dpg.set_value('series_tag', [list(data_x), list(data_y)])          
 # # dpg.fit_axis_data('x_axis')
@@ -98,8 +93,6 @@ dpg.create_context()
 # # dpg.set_value('series_tag2', [list(data_x), list(data_z)])          
 # # dpg.fit_axis_data('x_axis2')
 # # dpg.fit_axis_data('z_axis') 
-
-
 
 def update_data():
    
@@ -162,30 +155,46 @@ def popup_funct_home(sender):#Function to home the stage.
     motor.move_home() #HOMES MOTOR
     dpg.set_value("location", 0 )
 
-def data_collection(numsamples, frequency):
+def data_collection(numbersamples, frequency):
     # while motor.is_in_motion:
         # global SAMPLING
-
         # print(SAMPLING)
-        with nidaqmx.Task(new_task_name='task') as task:
-            
+        task = nidaqmx.Task(new_task_name='task')
+        
         # print(liveplot)
         # task = nidaqmx.Task(new_task_name='task')
         # print(list(task.ai_channels))
-            task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1), min_val=0,max_val=10) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
-            task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1), min_val=-1,max_val=10)#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
+        task.ai_channels.add_ai_voltage_chan("Dev1/ai2", terminal_config=TerminalConfiguration(-1), min_val=0,max_val=10) ##initialize data acquisition task. Dev1 is the name of the DAQ, AV2 is the channel the induc is connected to.
+        task.ai_channels.add_ai_voltage_chan("Dev1/ai7", terminal_config=TerminalConfiguration(-1), min_val=-1,max_val=10)#For more info on TermConfig see: https://knowledge.ni.com/KnowledgeArticleDetails?id=kA00Z0000019QRZSA2&l=en-US
+        
         #      and https://www.ni.com/en-us/shop/data-acquisition/sensor-fundamentals/measuring-direct-current-dc-voltage.html
         # print(list(task.ai_channels))
-            task.timing.cfg_samp_clk_timing(frequency) #sets sample rate of code
-            sensor_data2 = task.read(number_of_samples_per_channel=numsamples)
-            task.close()
-            print(sensor_data2)
-            program_parameters.is_sampling = False
-            # print(SAMPLING)
-            return sensor_data2
+        task.timing.cfg_samp_clk_timing(rate=frequency, sample_mode=AcquisitionType.FINITE, samps_per_chan=numbersamples)
+        
 
-def png_output(sensor_data,pos):
-    folder_path = "C:/Users/lapto/Desktop/lab_program/data_output/"
+        # sensor_data2 = task.read(number_of_samples_per_channel = numbersamples)
+        task.start()
+        pos_thread = threading.Thread(target=pos_get())
+        sensor_data2 = task.read(number_of_samples_per_channel = numbersamples,timeout=nidaqmx.constants.WAIT_INFINITELY)
+        
+        pos_thread.start()
+
+
+        
+        # print(sensor_data2)
+        print(f"number of samples is {numbersamples}")
+        print(len(sensor_data2))
+        # task.close()
+        #print(sensor_data2)
+        # program_parameters.is_sampling = False
+        # print(SAMPLING)
+        task.stop()
+        task.close()
+        return sensor_data2
+
+def png_output(sensor_data,numsamples,frequency):
+    pos = pos_get(numsamples,frequency)
+    folder_path = "C:/Users/lapto/Desktop/lab_program/data_output"
     os.makedirs(folder_path, exist_ok=True)  #only makes a new folder if there isnt one named 'folder_path'
     posdf = pd.DataFrame(pos)
     df = pd.DataFrame(sensor_data)  
@@ -200,7 +209,7 @@ def png_output(sensor_data,pos):
     file_path = os.path.join(folder_path,file_name)
     plt.savefig(file_path, dpi=1000)
 
-    print(df_LVIT)
+    #print(df_LVIT)
     plt.figure(2) #plots and saves LVIT graph
     plt.xlabel('# of samples'), plt.ylabel('LVIT Volts'), plt.ylim(0,10)
     plt.plot(df_LVIT, c = 'b')  
@@ -217,24 +226,30 @@ def png_output(sensor_data,pos):
 
     plt.close()
 
-def csv_output(sensor_data,pos):
-    posdf = pd.DataFrame(pos)
-    df = pd.DataFrame(sensor_data)
-    df1 = df.transpose()
-    #print(df1)
-    df2 = pd.concat([df1,posdf], axis=1)
-    #print(df2)
-    names = ["Induction","LVIT","Position"]
-    df2.columns = names
-    
-    folder_path = "C:/Users/lapto/Desktop/lab_program/data_output/"
-    csv_name = datetime.now().strftime("%B_%d_Time_%I-%M-%S")    #Create the file name. Spaces, word without quotes seem to work, ex: 'time'.
-    file_name = f'Csv_{csv_name}.csv' 
-    file_path = os.path.join(folder_path,file_name)
-    df2.to_csv(file_path)
+def csv_output(sensor_data2,pos):
+    if motor.is_in_motion==False:
+        df = pd.DataFrame(sensor_data2)
+        df1 = df.transpose()
+        df2 = pd.concat([df1,pd.DataFrame(pos)], axis=1)
+        names = ["Induction","LVIT","Position"]
+        df2.columns = names
+        folder_path = "C:/Users/lapto/Desktop/lab_program/data_output/"
+        csv_name = datetime.now().strftime("%B_%d_Time_%I-%M-%S")    #Create the file name. Spaces, word without quotes seem to work, ex: 'time'.
+        file_name = f'Csv_{csv_name}.csv' 
+        file_path = os.path.join(folder_path,file_name)
+        df2.to_csv(file_path)
+        plt.plot(df2)
+        plt.savefig("test.png")
+        
 
-def run_function(sender):  #pulls input parameters and assigns them variables when run button is clicked
-    
+
+def pos_get():
+    program_parameters.position_get = []
+    while motor.is_in_motion:
+        program_parameters.position_get.append(motor.position)
+    # return pos
+
+def run_function(sender):  #pulls input parameters and assigns them variables when run button is clicked  
     
     Accel_Get = dpg.get_value(accel)  #These 4 lines fetch the  our inputs from the GUI and assign them to varibles
     Velo_Get = dpg.get_value(velo)
@@ -245,47 +260,49 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     print(MotorPos)
     print('posget', Position_Get)
     dP = abs(MotorPos-Position_Get)
-    Taccel = Velo_Get/Accel_Get
-    dPaccel = (Velo_Get*Taccel)/2
-    dTvelo = abs(dP-dPaccel)/Velo_Get
-    dT = dTvelo + Taccel
-    numsamples = int(dT * frequency +2)
-    print(f"Time to run in Sec: {dT}")
-    print(f"Number of samples: {numsamples}")
+    # Taccel = Velo_Get/Accel_Get
+    # dPaccel = (Velo_Get*Taccel)/2
+    # dTvelo = abs(dP-dPaccel)/Velo_Get
+    # dT = dTvelo + Taccel + 2
+    dT = 2*(Velo_Get/Accel_Get) + (dP/Velo_Get) - (Velo_Get/(Accel_Get))
 
-    # numsamples = 500
+    
+    program_parameters.number_samples = int(dT * frequency)
+    
+    print(f"Time to run in Sec: {dT}")
+    print(f"Number of samples: {program_parameters.number_samples}")
+
     print(Position_Get)
     print(Accel_Get)
     print(Velo_Get)
 
     motor.set_velocity_parameters(0,Accel_Get,Velo_Get)  #inputs min velocity (0), acceleration and max velocity
     motor.move_to(Position_Get)  #command that gets sent to LTS, initaites movement
-    print(Position_Get)
+    #print(Position_Get)
     dpg.set_value("location", Position_Get)
-
+    
     if program_parameters.save == True:  #from save toggle button on GUI, if True code pauses live sampling and calls the function data collection to sample 
-
         program_parameters.is_sampling = True
         program_parameters.liveplot = False
         time.sleep(.25)
-        sensor_data2 = data_collection(numsamples, frequency) # function that samples Inductor and LVIT 
+        numbersamples = program_parameters.number_samples
+        sensor_data2 = data_collection(numbersamples, frequency) # function that samples Inductor and LVIT 
+        # print(sensor_data2)
+        
+        # posdf = pos_get()
+        # png_output(sensor_data2,numsamples,frequency)
+        time.sleep(1)
+        csv_output(sensor_data2, program_parameters.position_get)
+        #print("position",program_parameters.position_get)
+        #print(sensor_data2)
 
-        png_output(sensor_data2,pos)
-        csv_output(sensor_data2,pos)
-
-        print(sensor_data2)
-        pos = []
-
-        while motor.is_in_motion:
-            cur_pos = motor.position
-            pos.append(cur_pos)
-    
-        time.sleep(3.0)
 
         program_parameters.liveplot = True #restarts while loop allowing live plots to function
         thread = threading.Thread(target=update_data) #restarts thread application for live plots
         thread.start()
         return 0
+    
+
 
 def move_forward():
 
@@ -320,15 +337,7 @@ def move_backward_button_state(sender):
     program_parameters.move_backward = not program_parameters.move_backward
     dpg.bind_item_theme(sender, item_theme_GREEN if program_parameters.move_backward is True else item_theme_RED)
     move_backward()
-    
- 
-
-
-
-
-
         
-
 
 #GUI That references functions
 # with dpg.item_handler_registry(tag="move_forward_true") as handler:
@@ -364,7 +373,7 @@ with dpg.window(label="LST Settings", width=400, height=250, pos=(151,0)): #GUI 
 
     accel = dpg.add_input_float(label="acceleration", default_value =1, tag = "Accel")
     velo = dpg.add_input_float(label="velocity", default_value =5, )
-    position = dpg.add_input_float(label="move to (abs position)", default_value =50, )
+    position = dpg.add_input_float(label="move to (abs position)", default_value =5, )
     Location = dpg.add_input_float(label = "current position mm", default_value = MotorPos, tag = "location" )
 
 with dpg.window(label="MYDAC", width=400, height=250, pos=(551,0)):
