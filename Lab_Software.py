@@ -146,6 +146,9 @@ def button_callback(sender, app_data, user_data):
   dpg.set_item_user_data(sender, (program_parameters.save, item_theme_GREEN, item_theme_RED,))
 #   return state
 
+# def position_from_time_and_frequency(freq, tot_time):
+#     S = linspace(0,freq*tot_time)
+#     return (v_get^2/a/get)+v_get*(S/freq)
 
 
 
@@ -249,6 +252,12 @@ def pos_get():
         program_parameters.position_get.append(motor.position)
     # return pos
 
+def positionupdate():
+    while True:
+        LTSpos = motor.position
+        print(LTSpos)
+        dpg.set_value("location", LTSpos)
+
 def run_function(sender):  #pulls input parameters and assigns them variables when run button is clicked  
     
     Accel_Get = dpg.get_value(accel)  #These 4 lines fetch the  our inputs from the GUI and assign them to varibles
@@ -279,7 +288,7 @@ def run_function(sender):  #pulls input parameters and assigns them variables wh
     motor.set_velocity_parameters(0,Accel_Get,Velo_Get)  #inputs min velocity (0), acceleration and max velocity
     motor.move_to(Position_Get)  #command that gets sent to LTS, initaites movement
     #print(Position_Get)
-    dpg.set_value("location", Position_Get)
+    # dpg.set_value("location", Position_Get)
     
     if program_parameters.save == True:  #from save toggle button on GUI, if True code pauses live sampling and calls the function data collection to sample 
         program_parameters.is_sampling = True
@@ -429,8 +438,10 @@ dpg.bind_item_theme(YES_HOME, item_theme_GREEN)
 dpg.create_viewport(title='Cantilever Interface', width=1800, height=1200)
 dpg.setup_dearpygui()
 dpg.show_viewport()
-thread = threading.Thread(target=update_data)
-thread.start()
+liveplotthread = threading.Thread(target=update_data)
+positionupdatethread = threading.Thread(target=positionupdate)
+liveplotthread.start()
+positionupdatethread.start()
 
 dpg.start_dearpygui()
 
