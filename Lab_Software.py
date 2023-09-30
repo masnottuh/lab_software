@@ -36,7 +36,6 @@ import dearpygui.dearpygui as dpg
 import nidaqmx
 from nidaqmx.constants import TerminalConfiguration
 from nidaqmx.constants import (AcquisitionType)
-
 import nidaqmx.system
 import matplotlib
 import matplotlib.pyplot as plt
